@@ -92,60 +92,74 @@ async def main():
             async with async_playwright() as p:
                 browser_type = [p.chromium, p.firefox, p.webkit]
                 browser_type_cycle = cycle(browser_type)
-
+                counter =0
+                start_index =0
                 # browser = await p.chromium.launch(
                 # headless = False)
                 # page = await browser.new_page()
                 titles = []
                 links = []
                 roles =[]
-                for url,role in zip(urls,rols):
-                    # for browser_type in [p.chromium, p.firefox, p.webkit]:
+
+                for _ in range(3):
                     browser_show = next(browser_type_cycle)
                     browser = await browser_show.launch(
                     headless = False)
                     page = await browser.new_page()
-                    user_agent = UserAgent(browsers=["chrome", "edge", "firefox", "safari","Opera","phantom","Wavebox","Rambox"]).random
+                    for i in range(start_index,len(urls)):
+                        url = urls[i]
+                        role = rols[i]
+                    # for url,role in zip(urls,rols):
+                        start_index+=1
+                        counter+=1
+                    # for browser_type in [p.chromium, p.firefox, p.webkit]:
+                    # browser_show = next(browser_type_cycle)
+                    # browser = await browser_show.launch(
+                    # headless = False)
+                    # page = await browser.new_page()
+                        user_agent = UserAgent(browsers=["chrome", "edge", "firefox", "safari","Opera","phantom","Wavebox","Rambox"]).random
                     # print(user_agent)
                     # user_agent = next(user_agents_cycle)
 
-                    await page.set_extra_http_headers({"User-Agent": user_agent})
-                    query_search =f'http://www.google.com/search?q={url}+{role}'
-                    await page.goto( query_search)
+                        await page.set_extra_http_headers({"User-Agent": user_agent})
+                        query_search =f'http://www.google.com/search?q={url} {role}'
+                        await page.goto( query_search)
                     # await asyncio.sleep(random.uniform(1, 3))
-                    elements = await page.query_selector_all('a')
+                        elements = await page.query_selector_all('a')
         
-                    for element in elements:
-                        href ,title, role_1 = await asyncio.gather(
-                        element.get_attribute('href'),
-                        element.inner_text(),
-                        element.inner_text()
-                        )
-                        if href is not None and 'linkedin.com' in href:
-                            break
+                        for element in elements:
+                            href ,title, role_1 = await asyncio.gather(
+                            element.get_attribute('href'),
+                            element.inner_text(),
+                            element.inner_text()
+                            )
+                            if href is not None and 'linkedin.com' in href:
+                                break
 
-                    title_name = title.split()[:2]
-                    # print(f"title_name:::{title_name}")
-                    title_name= ' '.join(title_name)
-                    links.append(href)
-                    titles.append(title_name)
-                    role_parts = role_1.lower().split()
+                        title_name = title.split()[:2]
+                     # print(f"title_name:::{title_name}")
+                        title_name= ' '.join(title_name)
+                        links.append(href)
+                        titles.append(title_name)
+                        role_parts = role_1.lower().split()
                     # print(f'list of roles  {role_parts}')
-                    filtered_role = [x for x in role_parts if any(keyword in x for keyword in ['founder', 'ceo', 'co-founder','founder/ceo'])]
+                        filtered_role = [x for x in role_parts if any(keyword in x for keyword in ['founder', 'ceo', 'co-founder','founder/ceo'])]
                     # print(f"filter {filtered_role}")
-                    if len(filtered_role) >=2:
-                          roles.append(filtered_role[:2])
-                    else:
-                         roles.append(filtered_role[:1])
-                    await browser.close()
-          
+                        if len(filtered_role) >=2:
+                            roles.append(filtered_role[:2])
+                        else:
+                            roles.append(filtered_role[:1])
+                        if counter >= 50:
+                           await browser.close()
+                           counter = 0
+                           break
                 dataset['Linked_in'] = pd.Series(links)
                 dataset['name'] = pd.Series(titles)
                 dataset['role']= pd.Series(roles)
                 dataset.to_excel(destination, index=False)
                 # await page.get_by_role('presentation').click()
                 # await browser.close()
-                return "Data Added"
+                return "Data Added",200
             # asyncio.get_event_loop().run_until_complete(main())
         else:
           return "Data not updated"
