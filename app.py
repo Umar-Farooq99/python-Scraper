@@ -16,6 +16,7 @@ from playwright_recaptcha import recaptchav3
 import time
 from fake_useragent import UserAgent
 from itertools import cycle
+from playwright_stealth import stealth_async
 
 app = Flask(__name__)
 CORS(app)
@@ -106,6 +107,7 @@ async def main():
                     browser = await browser_show.launch(
                     headless = False)
                     page = await browser.new_page()
+                    await stealth_async(page)
                     for i in range(start_index,len(urls)):
                         url = urls[i]
                         role = rols[i]
