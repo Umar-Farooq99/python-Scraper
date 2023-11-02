@@ -17,7 +17,6 @@ import time
 from fake_useragent import UserAgent
 from itertools import cycle
 from playwright_stealth import stealth_async
-
 app = Flask(__name__)
 CORS(app)
 @app.route('/uploadfile', methods=['POST'])
