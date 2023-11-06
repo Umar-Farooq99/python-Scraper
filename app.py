@@ -1,14 +1,11 @@
 from flask import Flask, jsonify, request, send_file, after_this_request
 from validate_email import validate_email
-# from pyppeteer import launch
 import random
 from playwright.async_api import async_playwright
 import pandas as pd
 import asyncio
 # import aiohttp
 import tracemalloc
-# from selenium import webdriver
-# import pyshorteners
 import io
 import os
 from flask_cors import CORS
@@ -17,7 +14,10 @@ import time
 from fake_useragent import UserAgent
 from itertools import cycle
 from playwright_stealth import stealth_async
+from datetime import datetime
+from config_db import connect_to_mongodb
 app = Flask(__name__)
+collection_1, collection_2,collection_3 = connect_to_mongodb()
 CORS(app)
 @app.route('/uploadfile', methods=['POST'])
 def uploadfile():
@@ -64,7 +64,7 @@ def allowed_file(filename):
 # user_agents_cycle = cycle(user_agents)
 
 @app.route('/hiturls' , methods = ['POST'])
-async def main():
+async def Scaping_Profile():
     try: 
         # type_tiny = pyshorteners.Shortener()
         tracemalloc.start()
@@ -80,6 +80,18 @@ async def main():
                 rols = dataset[rol_column].tolist()
                 # print(urls)
                 # print(rols)
+                dic =[]
+                for companyUrl,companyRole in zip(urls,rols):
+                    Existing_record = collection_2.find_one({"url":companyUrl,"roles":companyRole})
+                    if Existing_record is None:
+                       dic.append({
+                         'url':companyUrl,
+                         'roles':companyRole,
+                         'upload_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                         'file_name': uploaded_file.filename
+                        })
+                if dic:       
+                   collection_2.insert_many(dic)
             else:
                 os.remove(destination)
                 return "There is no 'url' or 'roles' column in excel file and file is deleted."
@@ -100,7 +112,7 @@ async def main():
                 titles = []
                 links = []
                 roles =[]
-
+                url_list =[]
                 for _ in range(3):
                     browser_show = next(browser_type_cycle)
                     browser = await browser_show.launch(
@@ -136,12 +148,13 @@ async def main():
                             )
                             if href is not None and 'linkedin.com' in href:
                                 break
-
+                      
                         title_name = title.split()[:2]
                      # print(f"title_name:::{title_name}")
                         title_name= ' '.join(title_name)
                         links.append(href)
                         titles.append(title_name)
+                        url_list.append(url)
                         role_parts = role_1.lower().split()
                     # print(f'list of roles  {role_parts}')
                         filtered_role = [x for x in role_parts if any(keyword in x for keyword in ['founder', 'ceo', 'co-founder','founder/ceo'])]
@@ -154,6 +167,14 @@ async def main():
                            await browser.close()
                            counter = 0
                            break
+                data=[]
+                for url ,title in zip(url_list,titles):
+                    data.append( {
+                        'url': url,
+                        "name": title,
+                    })
+                
+                collection_1.insert_many(data)
                 dataset['Linked_in'] = pd.Series(links)
                 dataset['name'] = pd.Series(titles)
                 dataset['role']= pd.Series(roles)
@@ -173,6 +194,7 @@ async def main():
 def allowed_file(filename):
     ALLOWED_EXTS = ['xlsx']
     return '.' in filename and filename.split('.', 1)[1].lower() in ALLOWED_EXTS
+
  # Define a list of user-agent strings to rotate
 # user_agents = [
 #                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.1234.0 Safari/537.36",
